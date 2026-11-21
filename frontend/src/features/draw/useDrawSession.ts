@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ApiError } from '../../api/client';
 import { postDraws, type DrawResponse, type DrawResult } from '../../api/draws';
 import { landingRotation } from '../wheel/wheelLanding';
@@ -52,10 +52,13 @@ export function useDrawSession({ campaignId, slices, onDrawn, onRevealed, onFini
   const pending = useRef<{ key: string; count: number } | null>(null);
   const aborter = useRef<AbortController | null>(null);
 
+  // 非同步流程裡一律讀最新的 callbacks 與 slices
   const callbacks = useRef({ onDrawn, onRevealed, onFinished, onFailed });
-  callbacks.current = { onDrawn, onRevealed, onFinished, onFailed };
   const slicesRef = useRef(slices);
-  slicesRef.current = slices;
+  useLayoutEffect(() => {
+    callbacks.current = { onDrawn, onRevealed, onFinished, onFailed };
+    slicesRef.current = slices;
+  });
 
   useEffect(() => () => aborter.current?.abort(), []);
 

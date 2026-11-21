@@ -41,10 +41,11 @@ function CampaignWheel({ campaignId, campaign }: { campaignId: string; campaign:
   // 剩餘次數：先以 /me 為準，抽獎回應一到就改用回應裡的 remainingDraws
   const quota = useApiQuery((signal) => getMyDrawQuota(campaignId, signal), [campaignId]);
   const [latestRemaining, setLatestRemaining] = useState<number | null>(null);
+  const reloadQuotaQuery = quota.reload;
   const reloadQuota = useCallback(() => {
     setLatestRemaining(null);
-    quota.reload();
-  }, [quota.reload]);
+    reloadQuotaQuery();
+  }, [reloadQuotaQuery]);
   const remaining = latestRemaining ?? quota.data?.remainingDraws;
 
   // 我的紀錄：保留最近一次成功的資料，剛抽到的結果先插在最上面
@@ -55,14 +56,14 @@ function CampaignWheel({ campaignId, campaign }: { campaignId: string; campaign:
   );
   const [shownRecords, setShownRecords] = useState<DrawRecordPage>();
   const [justDrawn, setJustDrawn] = useState<DrawRecord[]>([]);
-  useEffect(() => {
-    if (records.status !== 'success') return;
+  // 新的一頁資料到了：顯示它，並移除已經寫入紀錄的剛抽結果（render 中調整 state，不另開 effect）
+  if (records.status === 'success' && records.data !== shownRecords) {
     setShownRecords(records.data);
     if (records.data.page === 0) {
       const persisted = new Set(records.data.content.map((r) => r.requestId));
       setJustDrawn((prev) => prev.filter((r) => !persisted.has(r.requestId)));
     }
-  }, [records.status, records.data]);
+  }
 
   const session = useDrawSession({
     campaignId,
