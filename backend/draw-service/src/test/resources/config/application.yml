@@ -1,0 +1,20 @@
+# 測試專用（classpath:/config/ 會疊加在 main 的 application.yml 之上）：測試不連 Eureka。
+eureka:
+  client:
+    enabled: false
+
+# 縮短 outbox relay 的逾時，讓「送出失敗 / 實例崩潰 → 重送」在幾秒內發生
+spring:
+  kafka:
+    producer:
+      properties:
+        max.block.ms: 2000
+        request.timeout.ms: 1000
+        delivery.timeout.ms: 2000
+
+outbox:
+  relay:
+    poll-interval: 50ms
+    claim-interval: 500ms
+    claim-min-idle: 3s
+    send-timeout: 2500ms

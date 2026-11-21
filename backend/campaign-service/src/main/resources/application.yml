@@ -1,0 +1,109 @@
+# 共用設定。所有連線資訊以 ${ENV:預設值} 注入；預設值對應 local profile。
+# 各 profile（local / docker / prod）只覆寫與環境有關的預設值。
+spring:
+  application:
+    name: campaign-service
+  profiles:
+    default: local
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/campaign?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false}
+    username: ${DB_USERNAME:spintowin}
+    password: ${DB_PASSWORD:spintowin}
+    hikari:
+      pool-name: campaign-hikari
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT_MS:30000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT_MS:600000}
+      max-lifetime: ${DB_POOL_MAX_LIFETIME_MS:1800000}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  data:
+    redis:
+      # Campaign 的 live state（設定、ppm 區間、Stock），與 draw-service 共用同一個 Redis
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT_MS:2000}ms
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      # 獨立的 consumer group：與 record-service 各自完整消費 draw.completed
+      group-id: ${KAFKA_CONSUMER_GROUP:campaign-service}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # 無法解析的訊息不會讓 consumer 卡在同一筆：轉成 DeserializationException 交給 error handler（送 dead-letter topic）
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+        spring.json.value.default.type: com.spintowin.common.event.DrawCompletedEvent
+        spring.json.use.type.headers: false
+    producer:
+      # 只用於 dead-letter topic（value serializer 見 config.KafkaConsumerConfig）
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+    listener:
+      # 每筆事件處理完（MySQL 交易已 commit）才提交 offset
+      ack-mode: record
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # issuer-uri 用於驗證 token 的 iss；jwk-set-uri 用於取得公鑰（容器內可改指向 keycloak 主機名稱）
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/spintowin}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8080/realms/spintowin/protocol/openid-connect/certs}
+
+server:
+  port: ${SERVER_PORT:8081}
+  request:
+    header:
+      forwarded:
+        # 只經 gateway 存取：採用 gateway 產生的 X-Forwarded-*（含 Prefix=/api/v1），
+        # Problem Details 的 instance 與 Location header 才會是使用者呼叫的網址
+        strategy: framework
+        use-prefix: true
+
+campaign:
+  consumer:
+    # draw.completed（扣減 remaining_stock）非暫時性錯誤最多重試幾次，之後送進 DLT
+    max-retries: ${CAMPAIGN_CONSUMER_MAX_RETRIES:2}
+    retry-initial-interval: ${CAMPAIGN_CONSUMER_RETRY_INITIAL_INTERVAL:1s}
+    # 資料庫暫時無法使用時無限重試（不跳過事件），重試間隔最多拉長到這個值
+    retry-max-interval: ${CAMPAIGN_CONSUMER_RETRY_MAX_INTERVAL:30s}
+    dead-letter-topic: ${CAMPAIGN_DEAD_LETTER_TOPIC:draw.completed.campaign-service.DLT}
+    dead-letter-partitions: ${CAMPAIGN_DEAD_LETTER_PARTITIONS:1}
+    dead-letter-replicas: ${CAMPAIGN_DEAD_LETTER_REPLICAS:1}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+  instance:
+    # 以容器 IP 註冊，gateway 才能直接連到每個 --scale 出來的實例
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: ${EUREKA_LEASE_RENEWAL_SECONDS:10}
+    lease-expiration-duration-in-seconds: ${EUREKA_LEASE_EXPIRATION_SECONDS:30}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+# OpenAPI（/v3/api-docs）：由 gateway 的 Swagger UI 匯集。server、Keycloak 授權與錯誤格式來自 common。
+spintowin:
+  openapi:
+    description: "活動（Campaign）與獎品（Prize）：USER 查活動資訊；ADMIN 管理活動、獎品、上線／結束與 Redis live state 重建。"
+springdoc:
+  default-produces-media-type: application/json

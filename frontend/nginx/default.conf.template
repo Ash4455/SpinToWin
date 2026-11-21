@@ -1,0 +1,42 @@
+# 由 nginx 映像檔在啟動時以 envsubst 產生 /etc/nginx/conf.d/default.conf
+# GATEWAY_UPSTREAM：gateway 位址（compose 內為 http://gateway:8000）
+
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+
+    # Docker 內建 DNS；以變數指定 upstream，gateway 重建或換 IP 時仍解析得到
+    resolver 127.0.0.11 valid=10s ipv6=off;
+
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # API 反向代理到 gateway，路徑原封不動（/api/v1/...）
+    location /api/ {
+        set $gateway ${GATEWAY_UPSTREAM};
+        proxy_pass $gateway;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_read_timeout 30s;
+    }
+
+    # Vite 產出的檔名含 hash，可長期快取
+    location /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    # SPA：其餘路徑都回 index.html，交給 React Router；index.html 不快取以便拿到新版
+    location / {
+        add_header Cache-Control "no-cache";
+        try_files $uri /index.html;
+    }
+}

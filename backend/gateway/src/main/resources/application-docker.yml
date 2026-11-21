@@ -1,0 +1,14 @@
+# docker：在 docker-compose 網路內執行，以服務名稱連線。
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # token 的 iss 是瀏覽器看到的 localhost，公鑰則從容器網路內的 keycloak 取得
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/spintowin}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://keycloak:8080/realms/spintowin/protocol/openid-connect/certs}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://discovery:8761/eureka/}

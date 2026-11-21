@@ -1,0 +1,23 @@
+# Build outputs
+target/
+build/
+dist/
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

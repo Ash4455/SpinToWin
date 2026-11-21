@@ -1,0 +1,3 @@
+com.spintowin.common.web.CommonWebAutoConfiguration
+com.spintowin.common.security.CommonSecurityAutoConfiguration
+com.spintowin.common.openapi.CommonOpenApiAutoConfiguration

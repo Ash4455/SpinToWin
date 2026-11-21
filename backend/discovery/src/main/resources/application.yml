@@ -1,0 +1,29 @@
+# Eureka Server（單機）。本身不註冊、不抓 registry。
+spring:
+  application:
+    name: discovery
+
+server:
+  port: ${SERVER_PORT:8761}
+
+eureka:
+  instance:
+    hostname: ${EUREKA_HOSTNAME:localhost}
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+  server:
+    # 開發與 --scale 展示用：關閉自我保護，讓縮減的實例能被及時剔除；縮短 registry 回應快取
+    enable-self-preservation: ${EUREKA_SELF_PRESERVATION:false}
+    eviction-interval-timer-in-ms: ${EUREKA_EVICTION_INTERVAL_MS:10000}
+    response-cache-update-interval-ms: ${EUREKA_RESPONSE_CACHE_UPDATE_MS:5000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true

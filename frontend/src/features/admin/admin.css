@@ -1,0 +1,227 @@
+/* 管理後台（只由 admin 頁面載入） */
+.admin {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.admin h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.2rem;
+}
+.admin h3 {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 1.05rem;
+}
+.admin__back {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+.admin__back:hover {
+  color: var(--primary);
+}
+.admin__header .campaign__meta {
+  margin: 0;
+}
+.admin-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+}
+.admin-card__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.admin-notice {
+  margin: 0;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  background: #ebfbee;
+  border: 1px solid #b2f2bb;
+  color: #2b8a3e;
+}
+.admin-alert__code {
+  margin-left: 0.5rem;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+/* 按鈕補充 */
+.button:disabled,
+.button:disabled:hover {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: var(--primary);
+}
+.button--secondary:disabled,
+.button--secondary:disabled:hover {
+  background: transparent;
+}
+.button--small {
+  padding: 0.25rem 0.7rem;
+  font-size: 0.9rem;
+}
+.button--danger {
+  background: transparent;
+  border-color: var(--danger-border);
+  color: var(--danger-text);
+}
+.button--danger:hover {
+  background: var(--danger-bg);
+}
+
+/* 表格 */
+.admin-table-wrap {
+  overflow-x: auto;
+}
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.admin-table th,
+.admin-table td {
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.admin-table th {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.admin-table .num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.admin-table__actions {
+  display: flex;
+  gap: 0.4rem;
+}
+.admin-table a {
+  color: var(--primary);
+}
+
+/* 表單 */
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.admin-form--inline {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+.admin-form__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.75rem 1rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.admin-form__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.field__label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.field__input {
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  min-width: 0;
+}
+.field__input:focus {
+  outline: 2px solid rgba(214, 51, 108, 0.35);
+  border-color: var(--primary);
+}
+.field__input:disabled {
+  background: var(--bg);
+  color: var(--muted);
+}
+.field--invalid .field__input {
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+}
+.field__error {
+  color: var(--danger-text);
+  font-size: 0.85rem;
+}
+.field__hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.field--compact .field__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.field--compact .field__input {
+  padding: 0.25rem 0.5rem;
+  width: 7rem;
+}
+.stock-delta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.4rem;
+  max-width: 16rem;
+}
+.stock-delta .error-message {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+/* 機率與統計 */
+.probability-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin: 0 0 0.75rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.probability-summary--exceeded {
+  color: var(--danger-text);
+}
+.admin-stats {
+  display: flex;
+  gap: 2.5rem;
+  margin: 0 0 0.75rem;
+}
+.admin-stats dt {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.admin-stats dd {
+  margin: 0.2rem 0 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}

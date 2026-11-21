@@ -1,0 +1,11 @@
+# 測試專用（classpath:/config/ 會疊加在 main 的 application.yml 之上）：測試不連 Eureka。
+eureka:
+  client:
+    enabled: false
+
+# 測試中縮短重試間隔，讓「有限次重試後送進 DLT」的情境很快完成
+record:
+  consumer:
+    max-retries: 2
+    retry-initial-interval: 100ms
+    retry-max-interval: 1s

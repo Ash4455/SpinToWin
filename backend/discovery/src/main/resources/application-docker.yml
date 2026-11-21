@@ -1,0 +1,4 @@
+# docker：在 docker-compose 網路內以服務名稱 discovery 被連線。
+eureka:
+  instance:
+    hostname: ${EUREKA_HOSTNAME:discovery}

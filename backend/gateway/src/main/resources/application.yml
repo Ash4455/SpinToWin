@@ -1,0 +1,144 @@
+# 共用設定。所有連線資訊以 ${ENV:預設值} 注入；預設值對應 local profile。
+spring:
+  application:
+    name: gateway
+  profiles:
+    default: local
+  cloud:
+    gateway:
+      server:
+        webflux:
+          # 轉送給服務的 X-Forwarded-*（Host、Proto、Prefix=/api/v1…）一律由 gateway 自己產生：
+          # 不信任任何來源帶進來的 X-Forwarded-*（預設的 regex 什麼都不比對）。前面有可信的反向代理時以 GATEWAY_TRUSTED_PROXIES 指定其 IP。
+          # 服務端開啟 server.request.header.forwarded（framework + use-prefix），Problem Details 的 instance 與 Location 才會是 /api/v1 路徑。
+          trusted-proxies: ${GATEWAY_TRUSTED_PROXIES:(?!)}
+          x-forwarded:
+            # 不送 X-Forwarded-Port：port 已包含在 X-Forwarded-Host（以瀏覽器連線的 host:port 為準，而不是容器內的 8000）
+            port-enabled: false
+          # 只用 X-Forwarded-*，不另外送 RFC 7239 Forwarded header
+          forwarded:
+            enabled: false
+          # 對外前綴 /api/v1；以 Eureka 服務名稱（lb://）路由並負載平衡，StripPrefix=2 去掉 /api/v1。
+          # 同一路徑前綴分屬不同服務時，以較小的 order 放在前面（例如 draw-service 的 /campaigns/*/draws）。
+          routes:
+            # 抽獎（POST）：每位使用者（JWT subject）以 Redis token bucket 限流，預設每秒 5 次，超過回 429 RATE_LIMITED。
+            # 限流 filter 要放在 StripPrefix 之前，Problem Details 的 instance 才是 /api/v1 路徑。
+            - id: draw-service-draws
+              uri: lb://draw-service
+              order: 5
+              predicates:
+                - Path=/api/v1/campaigns/*/draws
+                - Method=POST
+              filters:
+                - name: ProblemDetailsRequestRateLimiter
+                  args:
+                    # 每秒補幾個 token、桶子最多幾個、每次請求花幾個 token
+                    redis-rate-limiter.replenishRate: ${DRAW_RATE_LIMIT_REPLENISH_RATE:5}
+                    redis-rate-limiter.burstCapacity: ${DRAW_RATE_LIMIT_BURST_CAPACITY:5}
+                    redis-rate-limiter.requestedTokens: ${DRAW_RATE_LIMIT_REQUESTED_TOKENS:1}
+                    key-resolver: "#{@jwtSubjectKeyResolver}"
+                - StripPrefix=2
+            # 抽獎的其他 method 與剩餘次數。`*` 只比對一個路徑段，所以 /campaigns/{id}/draws/me（record-service）不會被這條吃掉
+            - id: draw-service
+              uri: lb://draw-service
+              order: 10
+              predicates:
+                - Path=/api/v1/campaigns/*/draws,/api/v1/campaigns/*/me
+              filters:
+                - StripPrefix=2
+            # 我的抽獎紀錄與後台統計（record-service）。`*` 只比對一個路徑段，其他 /campaigns/** 仍落到 campaign-service
+            - id: record-service
+              uri: lb://record-service
+              order: 20
+              predicates:
+                - Path=/api/v1/campaigns/*/draws/me,/api/v1/admin/campaigns/*/stats
+              filters:
+                - StripPrefix=2
+            # 各服務的 OpenAPI 文件（公開），給下方 springdoc.swagger-ui.urls 的 Swagger UI 匯集
+            - id: draw-service-api-docs
+              uri: lb://draw-service
+              predicates:
+                - Path=/draw-service/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: campaign-service-api-docs
+              uri: lb://campaign-service
+              predicates:
+                - Path=/campaign-service/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: record-service-api-docs
+              uri: lb://record-service
+              predicates:
+                - Path=/record-service/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: campaign-service
+              uri: lb://campaign-service
+              order: 100
+              predicates:
+                - Path=/api/v1/campaigns/**,/api/v1/admin/campaigns/**
+              filters:
+                - StripPrefix=2
+  data:
+    redis:
+      # 限流的 token bucket
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT_MS:2000}ms
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # issuer-uri 只用來比對 token 的 iss（瀏覽器看到的 Keycloak 位址）；
+          # 公鑰一律從 jwk-set-uri 取得（容器內指向 keycloak 主機名稱），兩者都設定時不會連 issuer-uri。
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/spintowin}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8080/realms/spintowin/protocol/openid-connect/certs}
+
+server:
+  port: ${SERVER_PORT:8000}
+
+# 唯一的 Swagger UI：http://localhost:8000/swagger-ui.html。匯集各服務的 /v3/api-docs（經上方 *-api-docs 路由），
+# 以 Keycloak public client spintowin-swagger（Authorization Code + PKCE）登入後試打 API。
+# gateway 自己沒有 API，不產生文件。Keycloak 的 redirect URI 是 http://localhost:8000/swagger-ui/oauth2-redirect.html。
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    urls:
+      - name: draw-service
+        url: /draw-service/v3/api-docs
+      - name: campaign-service
+        url: /campaign-service/v3/api-docs
+      - name: record-service
+        url: /record-service/v3/api-docs
+    urls-primary-name: draw-service
+    persist-authorization: true
+    display-request-duration: true
+    try-it-out-enabled: true
+    oauth:
+      client-id: ${SWAGGER_OAUTH_CLIENT_ID:spintowin-swagger}
+      use-pkce-with-authorization-code-grant: true
+      scopes: openid
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+    # 縮短 registry 更新間隔，新啟動或 --scale 的實例能較快被路由到
+    registry-fetch-interval-seconds: ${EUREKA_REGISTRY_FETCH_INTERVAL_SECONDS:5}
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: ${EUREKA_LEASE_RENEWAL_SECONDS:10}
+    lease-expiration-duration-in-seconds: ${EUREKA_LEASE_EXPIRATION_SECONDS:30}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true

@@ -1,0 +1,91 @@
+# 共用設定。所有連線資訊以 ${ENV:預設值} 注入；預設值對應 local profile。
+# draw-service 不連 MySQL：抽獎只讀寫 Redis（campaign-service 載入的 live state），結果經 outbox 非同步落庫。
+spring:
+  application:
+    name: draw-service
+  profiles:
+    default: local
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT_MS:2000}ms
+  # outbox relay 把 draw.completed 送到 Kafka。Kafka 暫時無法連線時抽獎照常進行，事件留在 Redis outbox。
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      # 所有 in-sync replica 都寫入才算確認；idempotent producer 讓 producer 自己的重試不產生重複
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      properties:
+        enable.idempotence: true
+        # 不帶 __TypeId__ header：消費端以 spring.json.value.default.type 指定 DrawCompletedEvent
+        spring.json.add.type.headers: false
+        linger.ms: 5
+        # Kafka 不可用時快速失敗（事件留在 outbox 等待重送），而不是讓 relay 卡住數分鐘
+        max.block.ms: ${KAFKA_MAX_BLOCK_MS:5000}
+        request.timeout.ms: ${KAFKA_REQUEST_TIMEOUT_MS:5000}
+        delivery.timeout.ms: ${KAFKA_DELIVERY_TIMEOUT_MS:8000}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # issuer-uri 用於驗證 token 的 iss；jwk-set-uri 用於取得公鑰（容器內可改指向 keycloak 主機名稱）
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/spintowin}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8080/realms/spintowin/protocol/openid-connect/certs}
+
+server:
+  port: ${SERVER_PORT:8082}
+  request:
+    header:
+      forwarded:
+        # 只經 gateway 存取：採用 gateway 產生的 X-Forwarded-*（含 Prefix=/api/v1），
+        # Problem Details 的 instance 與 Location header 才會是使用者呼叫的網址
+        strategy: framework
+        use-prefix: true
+
+outbox:
+  topic:
+    # draw.completed 的 partition 數（message key = campaignId）與 replication factor
+    partitions: ${KAFKA_DRAW_COMPLETED_PARTITIONS:6}
+    replicas: ${KAFKA_DRAW_COMPLETED_REPLICAS:1}
+  relay:
+    enabled: ${OUTBOX_RELAY_ENABLED:true}
+    poll-interval: ${OUTBOX_POLL_INTERVAL:100ms}
+    batch-size: ${OUTBOX_BATCH_SIZE:100}
+    claim-interval: ${OUTBOX_CLAIM_INTERVAL:5s}
+    # 未 ack 超過這麼久的事件由其他實例接手重送；需大於 send-timeout
+    claim-min-idle: ${OUTBOX_CLAIM_MIN_IDLE:30s}
+    send-timeout: ${OUTBOX_SEND_TIMEOUT:10s}
+    stale-consumer-idle: ${OUTBOX_STALE_CONSUMER_IDLE:1h}
+    # 空白 = hostname + 隨機字尾（每次啟動都不同）
+    consumer-name: ${OUTBOX_CONSUMER_NAME:}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+  instance:
+    # 以容器 IP 註冊，gateway 才能直接連到每個 --scale 出來的實例
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: ${EUREKA_LEASE_RENEWAL_SECONDS:10}
+    lease-expiration-duration-in-seconds: ${EUREKA_LEASE_EXPIRATION_SECONDS:30}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+# OpenAPI（/v3/api-docs）：由 gateway 的 Swagger UI 匯集。server、Keycloak 授權與錯誤格式來自 common。
+spintowin:
+  openapi:
+    description: "抽獎：單抽／Multi-Draw（需 Idempotency-Key，gateway 每使用者每秒限 5 次）與剩餘 Draw 次數。"
+springdoc:
+  default-produces-media-type: application/json

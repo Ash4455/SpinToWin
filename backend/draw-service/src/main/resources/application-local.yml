@@ -1,0 +1,5 @@
+# local：在本機直接執行（IDE / ./mvnw spring-boot:run），Redis 與 Keycloak 跑在 localhost。
+# 預設值已寫在 application.yml，這裡只放本機開發方便用的設定。
+logging:
+  level:
+    com.spintowin: DEBUG
