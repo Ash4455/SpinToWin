@@ -1,3 +1,4 @@
+import { sliceLabelLayout, type LabelGeometry } from './wheelLabels';
 import type { WheelSlice } from './wheelSlices';
 
 const PRIZE_COLORS = ['#f94144', '#f8961e', '#f9c74f', '#90be6d', '#43aa8b', '#4d908e', '#577590', '#9b5de5'];
@@ -6,6 +7,14 @@ const NO_WIN_COLOR = '#c9ccd1';
 const SIZE = 320;
 const CENTER = SIZE / 2;
 const RADIUS = SIZE / 2 - 8;
+const HUB_RADIUS = 18;
+/** 字級需與 styles.css 的 .wheel__label 一致 */
+const LABEL_GEOMETRY: LabelGeometry = {
+  center: CENTER,
+  outerRadius: RADIUS - 12,
+  innerRadius: HUB_RADIUS + 8,
+  fontSize: 12,
+};
 
 export function sliceColor(slice: WheelSlice, index: number): string {
   return slice.prizeId === null ? NO_WIN_COLOR : (PRIZE_COLORS[index % PRIZE_COLORS.length] ?? NO_WIN_COLOR);
@@ -51,26 +60,27 @@ export function Wheel({ slices, rotation = 0, spinMs = 0 }: Props) {
           data-testid="wheel-disc"
         >
           {slices.map((slice, i) => {
-            const mid = (slice.startAngle + slice.endAngle) / 2;
-            const [tx, ty] = point(mid, RADIUS * 0.62);
+            const label = sliceLabelLayout(slice, LABEL_GEOMETRY);
             return (
               <g key={slice.key} data-testid="wheel-slice">
                 <path d={slicePath(slice)} fill={sliceColor(slice, i)} stroke="#fff" strokeWidth={2} />
-                <text
-                  x={tx}
-                  y={ty}
-                  className="wheel__label"
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  transform={`rotate(${mid} ${tx} ${ty})`}
-                >
-                  {slice.label}
-                </text>
+                {label && (
+                  <text
+                    x={label.x}
+                    y={label.y}
+                    className="wheel__label"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    transform={`rotate(${label.rotate} ${label.x} ${label.y})`}
+                  >
+                    {label.text}
+                  </text>
+                )}
               </g>
             );
           })}
         </g>
-        <circle cx={CENTER} cy={CENTER} r={18} className="wheel__hub" />
+        <circle cx={CENTER} cy={CENTER} r={HUB_RADIUS} className="wheel__hub" />
         <polygon points={`${CENTER - 12},2 ${CENTER + 12},2 ${CENTER},30`} className="wheel__pointer" />
       </svg>
     </figure>
