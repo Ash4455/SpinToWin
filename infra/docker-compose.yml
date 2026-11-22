@@ -94,6 +94,8 @@ services:
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
     volumes:
       - ./keycloak/realm-spintowin.json:/opt/keycloak/data/import/realm-spintowin.json:ro
+      # 自訂登入頁佈景（realm 的 loginTheme 指向 spintowin）
+      - ./keycloak/themes/spintowin:/opt/keycloak/themes/spintowin:ro
     ports:
       - "${KEYCLOAK_PORT:-8080}:8080"
     healthcheck:

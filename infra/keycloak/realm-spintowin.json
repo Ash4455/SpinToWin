@@ -1,6 +1,11 @@
 {
   "realm": "spintowin",
   "displayName": "SpinToWin",
+  "displayNameHtml": "SpinToWin",
+  "loginTheme": "spintowin",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["zh-TW"],
+  "defaultLocale": "zh-TW",
   "enabled": true,
   "sslRequired": "external",
   "registrationAllowed": false,

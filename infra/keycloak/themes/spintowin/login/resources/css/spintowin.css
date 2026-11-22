@@ -1,0 +1,117 @@
+/*
+ * SpinToWin 登入頁佈景：覆寫 keycloak.v2（PatternFly v5）的配色、字型與卡片外觀。
+ * 色票和 frontend/src/styles.css 的 :root 相同，兩邊改色時要一起改。
+ */
+:root {
+  --stw-bg: #f5f6f8;
+  --stw-surface: #ffffff;
+  --stw-text: #1f2328;
+  --stw-muted: #6a737d;
+  --stw-primary: #d6336c;
+  --stw-primary-hover: #b02a5b;
+  --stw-border: #e1e4e8;
+  --stw-font: system-ui, -apple-system, 'Segoe UI', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+
+  /* PatternFly 的主色、連結色、字型與圓角都從這些變數取值 */
+  --pf-v5-global--primary-color--100: var(--stw-primary);
+  --pf-v5-global--primary-color--200: var(--stw-primary-hover);
+  --pf-v5-global--link--Color: var(--stw-primary);
+  --pf-v5-global--link--Color--hover: var(--stw-primary-hover);
+  --pf-v5-global--FontFamily--text: var(--stw-font);
+  --pf-v5-global--FontFamily--heading: var(--stw-font);
+  --pf-v5-global--BorderRadius--sm: 6px;
+  --pf-v5-global--Color--100: var(--stw-text);
+  --pf-v5-global--Color--200: var(--stw-muted);
+
+  --keycloak-card-top-color: var(--stw-primary);
+}
+
+/* 背景：換掉 Keycloak 的深色圖片，改用前端的淺灰底 */
+.login-pf body,
+body#keycloak-bg {
+  background: var(--stw-bg);
+  color: var(--stw-text);
+  font-family: var(--stw-font);
+}
+
+/* 品牌標題：轉盤圖示 + SpinToWin 字樣，與前端頂端列的品牌字同色 */
+#kc-header {
+  padding-block: 3rem 1.5rem;
+}
+#kc-header-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  /* keycloak.v2 以 !important 把品牌字設成白色，這裡也要 !important 才蓋得掉 */
+  color: var(--stw-primary) !important;
+  font-family: var(--stw-font);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  white-space: nowrap;
+}
+#kc-header-wrapper::before {
+  content: '';
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  border: 3px solid var(--stw-surface);
+  box-shadow: 0 0 0 2px var(--stw-primary);
+  background: conic-gradient(
+    #d6336c 0 60deg,
+    #f783ac 60deg 120deg,
+    #fcc2d7 120deg 180deg,
+    #d6336c 180deg 240deg,
+    #f783ac 240deg 300deg,
+    #fcc2d7 300deg 360deg
+  );
+}
+
+/* 登入卡片：白底、細框、圓角，上緣保留一條主色 */
+.pf-v5-c-login__main {
+  background: var(--stw-surface);
+  border: 1px solid var(--stw-border);
+  border-top: 4px solid var(--stw-primary);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(31, 35, 40, 0.08);
+  overflow: hidden;
+}
+.pf-v5-c-login__main-header {
+  border-top: none;
+}
+#kc-page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* 主要按鈕：與前端 .button 相同的實心主色按鈕 */
+.pf-v5-c-button.pf-m-primary {
+  font-size: 1rem;
+  font-weight: 600;
+  padding-block: 0.6rem;
+}
+
+/* 輸入框：PatternFly 在元件內把主色重設為深藍，這裡改回主色（聚焦時的底線與外框） */
+.pf-v5-c-form-control {
+  --pf-v5-global--primary-color--100: var(--stw-primary);
+}
+.pf-v5-c-form-control > input:focus-visible {
+  outline: 2px solid var(--stw-primary);
+  outline-offset: 0;
+}
+
+/* 窄螢幕：卡片貼齊兩側留白，標題縮小 */
+@media (max-width: 36rem) {
+  #kc-header {
+    padding-block: 2rem 1rem;
+  }
+  #kc-header-wrapper {
+    font-size: 1.6rem;
+  }
+  .pf-v5-c-login__main {
+    margin-inline: 1rem;
+  }
+}
